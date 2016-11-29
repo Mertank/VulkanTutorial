@@ -2,7 +2,7 @@
 #define __VKWRAPPER_H__
 
 #include <vulkan\vulkan.h>
-#include <functional>>
+#include <functional>
 
 namespace tut {
 
@@ -27,7 +27,7 @@ public:
 	===============
 	*/
 	VKWrapper( std::function<void( T, VkAllocationCallbacks* )> deletef ) {
-		deleter = [ = ]( T obj ) { deletef( obj, nullptr ) };
+		deleter = [ = ]( T obj ) { deletef( obj, nullptr ); };
 	}
 	/*
 	===============
@@ -93,6 +93,7 @@ public:
 			m_object = rhs;
 		}
 	}
+
 	/*
 	===============
 	VKWrapper::operator==
@@ -100,16 +101,16 @@ public:
 		Compares this m_object to an m_object of another type
 	===============
 	*/
-	typedef<typename V>
+	template<typename V>
 	bool operator==( V rhs ) const {
 		return m_object == ( T )rhs;
-	}
+	}	
 
 	/*
 	===============
 	VKWrapper::replace
 
-		Frees up the current m_object before returning a reference to it.
+	Frees up the current m_object before returning a reference to it.
 	===============
 	*/
 	T* replace() {

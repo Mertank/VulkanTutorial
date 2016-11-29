@@ -1,23 +1,38 @@
 #ifndef __HELLOTRIANGLEAPPLICATION_H__
 #define __HELLOTRIANGLEAPPLICATION_H__
 
-struct GLFWwindow;
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
+
+#include <memory>
+#include <vector>
+
+#include "VKWrapper.h"
 
 namespace tut {
 
 class HelloTriangleApplication {
 public:
-	int			run( void );
+														HelloTriangleApplication( void );
 
+	int													Run( void );
 private:
-	void		initVulkan( void );
-	void		initWindow( void );
-	void		mainLoop( void );
+	void												InitVulkan( void );
+	void												InitWindow( void );
 
-	GLFWwindow*	m_window{ nullptr };
+	std::unique_ptr<std::vector<VkExtensionProperties>>	GetAvailableExtensions();
 
-	const int	WIDTH { 800 };
-	const int	HEIGHT{ 600 };
+	void												CreateInstance( const std::unique_ptr<std::vector<VkExtensionProperties>>& availableExtensions );
+	bool												IsExtensionAvailable( const std::unique_ptr<std::vector<VkExtensionProperties>>& availableExtensions, const char* extensionName );
+	void												PrintExtensions( const std::unique_ptr<std::vector<VkExtensionProperties>>& availableExtensions );
+
+	void												MainLoop( void );
+
+	std::unique_ptr<VKWrapper<VkInstance>>				m_vulkanInstance{ nullptr };
+	GLFWwindow*											m_window{ nullptr };
+
+	const int											WIDTH { 800 };
+	const int											HEIGHT{ 600 };
 };
 
 }
