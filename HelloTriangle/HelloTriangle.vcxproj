@@ -18,6 +18,14 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="HelloTriangleApplication.cpp" />
+    <ClCompile Include="main.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="HelloTriangleApplication.h" />
+    <ClInclude Include="VKWrapper.h" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7f943d8d-a35c-4cc0-aace-838d7ad753ee}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
