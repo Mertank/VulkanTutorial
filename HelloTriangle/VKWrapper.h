@@ -37,7 +37,7 @@ public:
 	===============
 	*/
 	VKWrapper( const VKWrapper<VkInstance>& instance, std::function<void( VkInstance, T, VkAllocationCallbacks* )> deletef ) {
-		deleter = [ &instance, deletef ]( T obj ) { deletef( instance, obj, nullptr ) };
+		deleter = [ &instance, deletef ]( T obj ) { deletef( instance, obj, nullptr ); };
 	}
 	/*
 	===============

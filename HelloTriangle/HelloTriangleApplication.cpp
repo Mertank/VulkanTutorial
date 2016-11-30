@@ -1,10 +1,32 @@
 #include "HelloTriangleApplication.h"
+#include "VulkanProxies.h"
 
 #include <iostream>
 #include <stdexcept>
 #include <vector>
 
 namespace tut {
+/*
+===============
+HelloTriangleApplication::DebugCallback
+
+	Debug message callback from the Vulkan validation layers
+===============
+*/
+VKAPI_ATTR VkBool32 VKAPI_CALL HelloTriangleApplication::DebugCallback(
+	VkDebugReportFlagsEXT flags,
+	VkDebugReportObjectTypeEXT objType,
+	uint64_t obj,
+	size_t location,
+	int32_t code,
+	const char* layerPrefix,
+	const char* msg,
+	void* userData
+) {
+	std::cerr << msg << std::endl;
+
+	return VK_FALSE;
+}
 /*
 ===============
 HelloTriangleApplication::HelloTriangleApplication
@@ -41,10 +63,38 @@ HelloTriangleApplication::InitVulkan
 ===============
 */
 void HelloTriangleApplication::InitVulkan( void ) {
-	std::unique_ptr<std::vector<VkExtensionProperties>> availableExtensions = GetAvailableExtensions();
+	if ( ENABLE_VALIDATION_LAYERS && !CheckValidationLayerSupport() ) {
+		std::cerr << "Validation layers are not available" << std::endl;
+		throw std::runtime_error( "Validation layers were requested, but not available!" );
+	}
 
-	CreateInstance( availableExtensions );
-	PrintExtensions( availableExtensions );
+	CreateInstance();
+	SetupDebugCallback();
+}
+/*
+===============
+HelloTriangleApplication::SetupDebugCallback
+
+	Hooks the debug callback into the vulkan debug layer
+===============
+*/
+void HelloTriangleApplication::SetupDebugCallback( void ) {
+	//Don't do this if the validation layers are disabled
+	if ( !ENABLE_VALIDATION_LAYERS ) {
+		return;
+	}
+
+	VkDebugReportCallbackCreateInfoEXT createInfo = {};
+
+	createInfo.sType		= VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT;
+	createInfo.flags		= VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT; //Enable warnings and errors
+	createInfo.pfnCallback	= DebugCallback;
+
+	//Init unique pointer and use feed it to Vulkan
+	m_vulkanDebugCallback = std::make_unique<VKWrapper<VkDebugReportCallbackEXT>>( *m_vulkanInstance, VulkanProxies::DestroyDebugReportCallbackEXT );
+	if ( VulkanProxies::CreateDebugReportCallbackEXT( *m_vulkanInstance, &createInfo, nullptr, m_vulkanDebugCallback->replace() ) != VK_SUCCESS ) {
+		throw std::runtime_error( "Failed to setup debug callback" );
+	}
 }
 /*
 ===============
@@ -87,11 +137,10 @@ HelloTriangleApplication::CreateInstance
 	Creates a Vulkan instance
 ===============
 */
-void HelloTriangleApplication::CreateInstance( const std::unique_ptr<std::vector<VkExtensionProperties>>& availableExtensions ) {
-	VkApplicationInfo		applicationInfo		= {};
-	VkInstanceCreateInfo	instanceInfo		= {};
-	uint32_t				glfwExtensionCount	= 0;
-	const char**			glfwExtensions;
+void HelloTriangleApplication::CreateInstance( void ) {
+	VkApplicationInfo							applicationInfo		= {};
+	VkInstanceCreateInfo						instanceInfo		= {};
+	std::unique_ptr<std::vector<const char*>>	requiredExtensions	= GetRequiredExtensions();
 
 	//Setup application info
 	applicationInfo.sType				= VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -106,17 +155,15 @@ void HelloTriangleApplication::CreateInstance( const std::unique_ptr<std::vector
 	instanceInfo.pApplicationInfo	= &applicationInfo;
 
 	//Pull extension information from GLFW
-	glfwExtensions = glfwGetRequiredInstanceExtensions( &glfwExtensionCount );
 
-	instanceInfo.enabledExtensionCount		= glfwExtensionCount;
-	instanceInfo.ppEnabledExtensionNames	= glfwExtensions;
-	instanceInfo.enabledLayerCount			= 0;
-
-	for ( uint32_t i = 0; i < glfwExtensionCount; ++i ) {
-		if ( !IsExtensionAvailable( availableExtensions, glfwExtensions[ i ] ) ) {
-			std::cerr << "Extension \'" << glfwExtensions[ i ] << "\' is not available!" << std::endl;
-			throw std::runtime_error( "An extension for initializing Vulkan is missing!" );
-		}
+	instanceInfo.enabledExtensionCount		= requiredExtensions->size();
+	instanceInfo.ppEnabledExtensionNames	= requiredExtensions->data();
+	
+	if ( ENABLE_VALIDATION_LAYERS ) {
+		instanceInfo.enabledLayerCount		= VALIDATION_LAYERS.size();
+		instanceInfo.ppEnabledLayerNames	= VALIDATION_LAYERS.data();
+	} else {
+		instanceInfo.enabledLayerCount = 0;
 	}
 
 	//Initialize the wrapper for our instance
@@ -129,18 +176,88 @@ void HelloTriangleApplication::CreateInstance( const std::unique_ptr<std::vector
 }
 /*
 ===============
-HelloTriangleApplication::PrintExtensions
+HelloTriangleApplication::CheckValidationLayerSupport
 
-	Cycles through all available extensions and prints them out
+	Checks if the required validation layers are available
 ===============
 */
-void HelloTriangleApplication::PrintExtensions( const std::unique_ptr<std::vector<VkExtensionProperties>>& availableExtensions ) {
-	//Print out the extensions
-	std::cout << "Available extensions:" << std::endl;
+bool HelloTriangleApplication::CheckValidationLayerSupport( void ) {
+	uint32_t	layerCount;
+	vkEnumerateInstanceLayerProperties( &layerCount, nullptr );
 
-	for ( const VkExtensionProperties& extensionProperties : *availableExtensions ) {
-		std::cout << "\t" << extensionProperties.extensionName << std::endl;
+	std::vector<VkLayerProperties> layerProperties( layerCount );
+	vkEnumerateInstanceLayerProperties( &layerCount, layerProperties.data() );
+
+	for ( const char* layerName : VALIDATION_LAYERS ) {
+		bool layerFound = false;
+
+		for ( const VkLayerProperties& properties : layerProperties ) {
+			if ( strcmp( properties.layerName, layerName ) == 0 ) {
+				layerFound = true;
+				break;
+			}
+		}
+
+		if ( !layerFound ) {
+			return false;
+		}
 	}
+
+	return true;
+}
+/*
+===============
+HelloTriangleApplication::CheckExtensionSupport
+
+	Makes sure all the requred extensions are available
+===============
+*/
+bool HelloTriangleApplication::CheckExtensionSupport( const std::unique_ptr<std::vector<const char*>>& requiredExtensions ) {
+	std::unique_ptr<std::vector<VkExtensionProperties>> availableExtensions = GetAvailableExtensions();
+
+	for ( const char* ext : *requiredExtensions ) {
+		bool foundExtension = false;
+
+		for ( const VkExtensionProperties& extensionProperties : *availableExtensions ) {
+			if ( strcmp( extensionProperties.extensionName, ext ) == 0 ) {
+				foundExtension = true;
+				break;
+			}
+		}
+
+		if ( !foundExtension ) {
+			return false;
+		}
+	}
+
+	return true;
+}
+/*
+===============
+HelloTriangleApplication::GetRequiredExtensions
+
+	Returns the extensions this application requires to run
+===============
+*/
+std::unique_ptr<std::vector<const char*>> HelloTriangleApplication::GetRequiredExtensions( void ) {
+	std::unique_ptr<std::vector<const char*>>	extensions		= std::make_unique<std::vector<const char*>>();
+	uint32_t									extensionCount	= 0;
+	const char**								glfwExtensions	= glfwGetRequiredInstanceExtensions( &extensionCount );
+
+	for ( uint32_t i = 0; i < extensionCount; ++i ) {
+		extensions->push_back( glfwExtensions[ i ] );
+	}
+
+	if ( ENABLE_VALIDATION_LAYERS ) {
+		extensions->push_back( VK_EXT_DEBUG_REPORT_EXTENSION_NAME );
+	}
+
+	if ( !CheckExtensionSupport( extensions ) ) {
+		std::cerr << "Extensions are unavailable!" << std::endl;
+		throw std::runtime_error( "Extensions that were required are not available!" );
+	}
+
+	return extensions;
 }
 /*
 ===============
