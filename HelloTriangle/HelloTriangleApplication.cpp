@@ -34,7 +34,7 @@ HelloTriangleApplication::HelloTriangleApplication
 	HelloTriangleApplication default constructor
 ===============
 */
-HelloTriangleApplication::HelloTriangleApplication( void )
+HelloTriangleApplication::HelloTriangleApplication( void ) 
 {}
 /*
 ===============
@@ -70,6 +70,8 @@ void HelloTriangleApplication::InitVulkan( void ) {
 
 	CreateInstance();
 	SetupDebugCallback();
+	PickPhysicalDevice();
+	CreateLogicalDevice();
 }
 /*
 ===============
@@ -273,6 +275,118 @@ void HelloTriangleApplication::InitWindow( void ) {
 	glfwWindowHint( GLFW_RESIZABLE, GLFW_FALSE );
 
 	m_window = glfwCreateWindow( WIDTH, HEIGHT, "Vulkan", nullptr, nullptr );
+}
+/*
+===============
+HelloTriangleApplication::PickPhysicalDevice
+
+	Picks the physical device to use for rendering
+===============
+*/
+void HelloTriangleApplication::PickPhysicalDevice( void ) {
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices( *m_vulkanInstance, &deviceCount, nullptr );
+
+	if ( deviceCount == 0 ) {
+		throw std::runtime_error( "No GPU that supports Vulkan was found" );
+	}
+
+	std::vector<VkPhysicalDevice> devices( deviceCount );
+	vkEnumeratePhysicalDevices( *m_vulkanInstance, &deviceCount, devices.data() );
+
+	for ( const VkPhysicalDevice& device : devices ) {
+		if ( IsDeviceSuitable( device ) ) {
+			m_selectedPhysicalDevice = device;
+			break;
+		}
+	}
+
+	if ( m_selectedPhysicalDevice == VK_NULL_HANDLE ) {
+		throw std::runtime_error( "No GPU found that's suitable" );
+	}
+}
+/*
+===============
+HelloTriangleApplication::IsDeviceSuitable
+
+	Returns if the device is suitable for what functions we need.
+===============
+*/
+bool HelloTriangleApplication::IsDeviceSuitable( VkPhysicalDevice device ) {
+	QueueFamilyIndicies indicies = FindQueueFamilies( device );
+
+	return indicies.IsComplete();
+}
+/*
+===============
+HelloTriangleApplication::FindQueueFamilies
+
+	Checks if the device supports graphics queue families
+===============
+*/
+QueueFamilyIndicies HelloTriangleApplication::FindQueueFamilies( VkPhysicalDevice device ) {
+	QueueFamilyIndicies indicies;
+	uint32_t			queueFamilyCount = 0;
+
+	vkGetPhysicalDeviceQueueFamilyProperties( device, &queueFamilyCount, nullptr );
+
+	std::vector<VkQueueFamilyProperties> queueFamilies( queueFamilyCount );
+	vkGetPhysicalDeviceQueueFamilyProperties( device, &queueFamilyCount, queueFamilies.data() );
+
+	int index = 0;
+	for ( const VkQueueFamilyProperties& queueFamily : queueFamilies ) {
+		if ( queueFamily.queueCount > 0 && queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT ) {
+			indicies.GraphicsFamily = index;
+		}
+
+		if ( indicies.IsComplete() ) {
+			break;
+		}
+
+		++index;
+	}
+
+	return indicies;
+}
+/*
+===============
+HelloTriangleApplication::CreateLogicalDevice
+
+	Creates logical device for rendering
+===============
+*/
+void HelloTriangleApplication::CreateLogicalDevice( void ) {
+	QueueFamilyIndicies			indicies			= FindQueueFamilies( m_selectedPhysicalDevice );
+
+	VkDeviceQueueCreateInfo		queueCreateInfo		= {};
+	VkPhysicalDeviceFeatures	deviceFeatures		= {};
+	VkDeviceCreateInfo			deviceCreateInfo	= {};
+
+	float						queuePriority		= 1.0f;
+
+	queueCreateInfo.sType				= VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex	= indicies.GraphicsFamily;
+	queueCreateInfo.queueCount			= 1;
+
+	queueCreateInfo.pQueuePriorities	= &queuePriority;
+
+	deviceCreateInfo.sType					= VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	deviceCreateInfo.pQueueCreateInfos		= &queueCreateInfo;
+	deviceCreateInfo.queueCreateInfoCount	= 1;
+	deviceCreateInfo.pEnabledFeatures		= &deviceFeatures;
+	deviceCreateInfo.enabledExtensionCount	= 0;
+
+	if ( ENABLE_VALIDATION_LAYERS ) {
+		deviceCreateInfo.enabledLayerCount		= VALIDATION_LAYERS.size();
+		deviceCreateInfo.ppEnabledLayerNames	= VALIDATION_LAYERS.data();
+	} else {
+		deviceCreateInfo.enabledLayerCount = 0;
+	}
+
+	m_vulkanDevice = std::make_unique<VKWrapper<VkDevice>>( vkDestroyDevice );
+	if ( vkCreateDevice( m_selectedPhysicalDevice, &deviceCreateInfo, nullptr, m_vulkanDevice->replace() ) != VK_SUCCESS ) {
+		throw std::runtime_error( "Failed to create logical device" );
+	}
 }
 /*
 ===============
