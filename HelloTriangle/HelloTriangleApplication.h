@@ -9,6 +9,7 @@
 
 #include "VKWrapper.h"
 #include "QueueFamilyIndicies.h"
+#include "SwapChainSupportDetails.h"
 
 namespace tut {
 
@@ -48,20 +49,38 @@ private:
 
 	void													PickPhysicalDevice( void );
 	bool													IsDeviceSuitable( VkPhysicalDevice device );
+	bool													CheckDeviceExtensionSupport( VkPhysicalDevice device );
 	QueueFamilyIndicies										FindQueueFamilies( VkPhysicalDevice device );
 
 	void													CreateLogicalDevice( void );
 
+	void													CreateSurface( void );
+	
+	SwapChainSupportDetails									QuerySwapChainSupport( VkPhysicalDevice device );
+	VkSurfaceFormatKHR										ChooseSwapSurfaceFormat( const std::vector<VkSurfaceFormatKHR>& formats );
+	VkPresentModeKHR										ChooseSwapPresentMode( const std::vector<VkPresentModeKHR>& presentModes );
+	VkExtent2D												ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& capabilites );
+	void													CreateSwapChain( void );
+
 	std::unique_ptr<VKWrapper<VkInstance>>					m_vulkanInstance{ nullptr };
 	std::unique_ptr<VKWrapper<VkDevice>>					m_vulkanDevice{ nullptr };
 	std::unique_ptr<VKWrapper<VkDebugReportCallbackEXT>>	m_vulkanDebugCallback{ nullptr };
+	std::unique_ptr<VKWrapper<VkSurfaceKHR>>				m_windowSurface{ nullptr };
+	std::unique_ptr<VKWrapper<VkSwapchainKHR>>				m_swapchain{ nullptr };
+
+	std::vector<VkImage>									m_swapChainImages;
+
+	VkFormat												m_swapChainImageFormat;
+	VkExtent2D												m_swapChainExtent;
 	VkPhysicalDevice										m_selectedPhysicalDevice{ VK_NULL_HANDLE };
+	VkQueue													m_presentQueue{ VK_NULL_HANDLE };
 
 	GLFWwindow*												m_window{ nullptr };
 
 	const int												WIDTH { 800 };
 	const int												HEIGHT{ 600 };
 	const std::vector<const char*>							VALIDATION_LAYERS{ "VK_LAYER_LUNARG_standard_validation" };
+	const std::vector<const char*>							DEVICE_EXTENSIONS{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 #ifdef NDEBUG
 	const bool												ENABLE_VALIDATION_LAYERS{ false };

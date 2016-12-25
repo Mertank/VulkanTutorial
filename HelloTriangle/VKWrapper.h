@@ -46,8 +46,8 @@ public:
 		Constructor for a VkDevice
 	===============
 	*/
-	VKWrapper( const VKWrapper<VkDevice>& instance, std::function<void( VkDevice, T, VkAllocationCallbacks* )> deletef ) {
-		deleter = [ &device, deletef ]( T obj ) { deletef( device, obj, nullptr ) };
+	VKWrapper( const VKWrapper<VkDevice>& device, std::function<void( VkDevice, T, VkAllocationCallbacks* )> deletef ) {
+		deleter = [ &device, deletef ]( T obj ) { deletef( device, obj, nullptr ); };
 	}
 	/*
 	===============
