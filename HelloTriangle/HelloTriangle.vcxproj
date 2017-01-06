@@ -30,6 +30,10 @@
     <ClInclude Include="VKWrapper.h" />
     <ClInclude Include="VulkanProxies.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="shader.vert" />
+    <None Include="shader.frag" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{7f943d8d-a35c-4cc0-aace-838d7ad753ee}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>

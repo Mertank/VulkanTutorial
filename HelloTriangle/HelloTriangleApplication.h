@@ -65,6 +65,8 @@ private:
 	void													CreateImageViews( void );
 
 	void													CreateGraphicsPipeline( void );
+	std::vector<char>										ReadFile( const std::string& filePath );
+	void													CreateShaderModule( const std::vector<char>& code, VKWrapper<VkShaderModule>& shaderModule );
 
 	std::unique_ptr<VKWrapper<VkInstance>>					m_vulkanInstance{ nullptr };
 	std::unique_ptr<VKWrapper<VkDevice>>					m_vulkanDevice{ nullptr };
@@ -82,8 +84,8 @@ private:
 
 	GLFWwindow*												m_window{ nullptr };
 
-	const int												WIDTH { 800 };
-	const int												HEIGHT{ 600 };
+	const uint32_t											WIDTH { 800 };
+	const uint32_t											HEIGHT{ 600 };
 	const std::vector<const char*>							VALIDATION_LAYERS{ "VK_LAYER_LUNARG_standard_validation" };
 	const std::vector<const char*>							DEVICE_EXTENSIONS{ VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
