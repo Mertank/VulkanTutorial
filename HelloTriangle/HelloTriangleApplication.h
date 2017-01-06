@@ -62,6 +62,10 @@ private:
 	VkExtent2D												ChooseSwapExtent( const VkSurfaceCapabilitiesKHR& capabilites );
 	void													CreateSwapChain( void );
 
+	void													CreateImageViews( void );
+
+	void													CreateGraphicsPipeline( void );
+
 	std::unique_ptr<VKWrapper<VkInstance>>					m_vulkanInstance{ nullptr };
 	std::unique_ptr<VKWrapper<VkDevice>>					m_vulkanDevice{ nullptr };
 	std::unique_ptr<VKWrapper<VkDebugReportCallbackEXT>>	m_vulkanDebugCallback{ nullptr };
@@ -69,6 +73,7 @@ private:
 	std::unique_ptr<VKWrapper<VkSwapchainKHR>>				m_swapchain{ nullptr };
 
 	std::vector<VkImage>									m_swapChainImages;
+	std::vector<std::unique_ptr<VKWrapper<VkImageView>>>	m_swapChainImageViews;
 
 	VkFormat												m_swapChainImageFormat;
 	VkExtent2D												m_swapChainExtent;

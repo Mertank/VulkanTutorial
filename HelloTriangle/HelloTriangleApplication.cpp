@@ -76,6 +76,7 @@ void HelloTriangleApplication::InitVulkan( void ) {
 	PickPhysicalDevice();
 	CreateLogicalDevice();
 	CreateSwapChain();
+	CreateImageViews();
 }
 /*
 ===============
@@ -600,8 +601,46 @@ void HelloTriangleApplication::CreateSwapChain( void ) {
 	m_swapChainImages.resize( swapChainImageCount );
 	vkGetSwapchainImagesKHR( *m_vulkanDevice, *m_swapchain, &swapChainImageCount, m_swapChainImages.data() );
 
+	//Store these for use later
 	m_swapChainExtent		= swapChainExtents;
 	m_swapChainImageFormat	= swapChainSurfaceFormat.format;
+}
+/*
+===============
+HelloTriangleApplication::CreateImageViews
+
+	Creates image views for the swap chain
+===============
+*/
+void HelloTriangleApplication::CreateImageViews( void ) {
+	m_swapChainImageViews.resize( m_swapChainImages.size() );
+
+	for ( uint32_t i = 0; i < m_swapChainImageViews.size(); ++i ) {
+		m_swapChainImageViews[ i ] = std::make_unique<VKWrapper<VkImageView>>( *m_vulkanDevice, vkDestroyImageView );
+
+		VkImageViewCreateInfo imageViewCreateInfo = {};
+
+		imageViewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		imageViewCreateInfo.image = m_swapChainImages[ i ];
+
+		imageViewCreateInfo.viewType	= VK_IMAGE_VIEW_TYPE_2D;
+		imageViewCreateInfo.format		= m_swapChainImageFormat;
+
+		imageViewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		imageViewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		imageViewCreateInfo.subresourceRange.aspectMask		= VK_IMAGE_ASPECT_COLOR_BIT;
+		imageViewCreateInfo.subresourceRange.baseMipLevel	= 0;
+		imageViewCreateInfo.subresourceRange.levelCount		= 1;
+		imageViewCreateInfo.subresourceRange.baseArrayLayer = 0;
+		imageViewCreateInfo.subresourceRange.layerCount		= 1;
+
+		if ( vkCreateImageView( *m_vulkanDevice, &imageViewCreateInfo, nullptr, m_swapChainImageViews[ i ]->replace() ) != VK_SUCCESS ) {
+			throw std::runtime_error( "Could not create image view" );
+		}
+	}
 }
 /*
 ===============
